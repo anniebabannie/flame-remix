@@ -1,4 +1,6 @@
 import type { MetaFunction } from "@remix-run/node";
+import { Form, useActionData } from "@remix-run/react";
+import { ActionFunctionArgs, json } from "react-router";
 
 export const meta: MetaFunction = () => {
   return [
@@ -7,35 +9,28 @@ export const meta: MetaFunction = () => {
   ];
 };
 
+export async function action({ request }: ActionFunctionArgs) {
+  const formData = await request.formData();
+  const a = formData.get("firstNum") as string;
+  const b = formData.get("secondNum") as string;
+  if (!a || !b) return json({ error: "Please provide two numbers" }, { status: 400 });
+  
+  return json({ sum: parseInt(a) + parseInt(b) });
+}
+
 export default function Index() {
+  const actionData = useActionData<typeof action>();
   return (
     <div style={{ fontFamily: "system-ui, sans-serif", lineHeight: "1.8" }}>
       <h1>Welcome to Remix</h1>
-      <ul>
-        <li>
-          <a
-            target="_blank"
-            href="https://remix.run/tutorials/blog"
-            rel="noreferrer"
-          >
-            15m Quickstart Blog Tutorial
-          </a>
-        </li>
-        <li>
-          <a
-            target="_blank"
-            href="https://remix.run/tutorials/jokes"
-            rel="noreferrer"
-          >
-            Deep Dive Jokes App Tutorial
-          </a>
-        </li>
-        <li>
-          <a target="_blank" href="https://remix.run/docs" rel="noreferrer">
-            Remix Docs
-          </a>
-        </li>
-      </ul>
+      {actionData &&
+        <p>The sum is: {actionData.sum}</p>
+      }
+      <Form action="/?index" method="post">
+        <input type="number" name="firstNum"/>
+        <input type="number" name="secondNum"/>
+        <input type="submit" value="Run Math" />
+      </Form>
     </div>
   );
 }
