@@ -13,11 +13,16 @@ let exitTimeout
   we can set the process group here to target only the "runner" Machines.
 */
 let processGroup;
-if (FLY_IMAGE_REF.includes(':deployment-')) {
-  const deploymentId = FLY_IMAGE_REF.split(':deployment-').pop().toLocaleLowerCase()
-  processGroup = `runner-${deploymentId}`
-} else {
-  processGroup = `runner-${new Buffer(FLY_IMAGE_REF).toString('base64').toLocaleLowerCase()}`
+console.log(FLY_IMAGE_REF)
+console.log(FLY_API_TOKEN)
+
+if (FLY_IMAGE_REF) {
+    if (FLY_IMAGE_REF.includes(':deployment-')) {
+      const deploymentId = FLY_IMAGE_REF.split(':deployment-').pop().toLocaleLowerCase()
+      processGroup = `runner-${deploymentId}`
+    } else {
+      processGroup = `runner-${new Buffer(FLY_IMAGE_REF).toString('base64').toLocaleLowerCase()}`
+    }
 }
 
 /*
