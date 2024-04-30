@@ -1,10 +1,13 @@
-import flame from "./flame.server";
-function runMath(a:number, b:number) {
-  return a + b;
+import flame from "./flame-remix.server";
+function runMath(a:string, b:string) {
+  const aNum = parseInt(a);
+  const bNum = parseInt(b);
+  return aNum + bNum;
 }
 
 export default flame(runMath, {
-  path: import.meta.url,
+  path: 'runMath',
+  // path: import.meta.url,
   guest: {
     cpu_kind: "shared",
     cpus: 2,
