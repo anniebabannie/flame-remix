@@ -1,6 +1,4 @@
 import axios from 'axios'
-import http from 'node:http'
-import * as url from 'url';
 
 const { IS_RUNNER, FLY_API_TOKEN, FLY_APP_NAME, FLY_IMAGE_REF, IS_LOCAL_DEV } = process.env
 const port = 3000
@@ -37,7 +35,7 @@ const machinesService = axios.create({
   When running on Fly.io, we'll use the internal DNS name of the "runner" Machines;
   This is allows us to access the "runner" Machines without exposing them to the public internet.
  */
-let runnerBaseUrl;
+let runnerBaseUrl:string;
 if (IS_LOCAL_DEV) {
   runnerBaseUrl = `http://localhost:${port}`
 } else {
@@ -47,6 +45,26 @@ if (IS_LOCAL_DEV) {
 /* 
   Start a new axios instance for accessing your "runner" Machines
 */
+
+async function runnerClient(endpoint:string, customConfig:RequestInit) {
+  const config = {
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    ...customConfig
+  }
+  return window
+    .fetch(`${runnerBaseUrl}/${endpoint}`, config)
+    .then(async response => {
+      if (response.ok) {
+        return await response.json()
+      } else {
+        const errorMessage = await response.text()
+        return Promise.reject(new Error(errorMessage))
+      }
+    })
+}
+
 const runnerService = axios.create({ 
   baseURL: runnerBaseUrl,
   headers: {
@@ -101,29 +119,44 @@ export default function flame(originalFunc:Function, config: FlameConfig): Funct
 */
 async function spawnAnotherMachine(guest:FlameGuest) {
 
-  // Start a new machine with the same image as the current machine
-  const {data: machine} = await machinesService.post('/machines', {
-    config: {
-      auto_destroy: true,
-      image: FLY_IMAGE_REF,
-      guest,
-      env: {
-        IS_RUNNER: "1"
-      },
-      processes: [
-        {
-          name: "runner",
+  const response = await fetch(`https://api.machines.dev/v1/apps/${FLY_APP_NAME}/machines`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${FLY_API_TOKEN}`
+    },
+    body: JSON.stringify({
+      config: {
+        auto_destroy: true,
+        image: FLY_IMAGE_REF,
+        guest,
+        env: {
+          IS_RUNNER: "1"
+        },
+        processes: [
+          {
+            name: "runner",
+          }
+        ],
+        metadata: {
+          fly_process_group: processGroup
         }
-      ],
-      metadata: {
-        fly_process_group: processGroup
       }
+    })
+  })
+  const machine = await response.json();
+  
+  // Set a timeout so our new machine doesn't run forever
+  await fetch(`https://api.machines.dev/v1/apps/${FLY_APP_NAME}/machines/${machine.id}/wait?timeout=60&state=started`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${FLY_API_TOKEN}`
     }
   })
-
-  // Set a timeout so our new machine doesn't run forever
-  await machinesService.get(`/machines/${machine.id}/wait?timeout=60&state=started`)
-
+  // await machinesService.get(`/machines/${machine.id}/wait?timeout=60&state=started`)
+  if (await checkIfThereAreRunners()) return true;
+  
   return machine
 }
 
@@ -133,7 +166,9 @@ async function spawnAnotherMachine(guest:FlameGuest) {
 async function checkIfThereAreRunners() {
   console.log("Checking if there are runners")
   try {
-    const res = await runnerService.get('/')
+    const res = await runnerClient('' , { method: 'GET'})
+    console.log("res", res)
+    // const res = await runnerService.get('/')
     console.log("there are runners!!")
     return res.status === 200
   } catch (err) {
@@ -149,11 +184,19 @@ async function checkIfThereAreRunners() {
 */
 async function execOnMachine(filename:string, args:any[]) {
   console.log("executing on machine!!!!!!!!!")
-  
-  const execRes = await runnerService.post('/flame', {filename, args})
-  console.log("execRes", execRes.data.result)
+
+  const response = await fetch(`${runnerBaseUrl}/flame`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ filename, args })
+  })
+  const runnerResponse = await response.json();
+  console.log("runnerResponse", runnerResponse)
+
   // Return the result of our original function to the main app Machine
-  return execRes.data.result
+  return runnerResponse.result;
 }
 
 // This function schedules the "runner" Machine to stop after a certain amount of time
