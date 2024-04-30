@@ -1,5 +1,3 @@
-import axios from 'axios'
-
 const { IS_RUNNER, FLY_API_TOKEN, FLY_APP_NAME, FLY_IMAGE_REF, IS_LOCAL_DEV } = process.env
 const port = 3000
 const timeUntilStop = 5 * 60 * 1000
@@ -19,16 +17,6 @@ if (FLY_IMAGE_REF && FLY_IMAGE_REF.includes(':deployment-')) {
 } else {
   processGroup = `runner-${new Buffer(FLY_IMAGE_REF!).toString('base64').toLocaleLowerCase()}`
 }
-
-/*
-  Start a new axios instance for Fly.io's Machines API
-  We'll use this to spawn new machines and check if there are any available runners
- */
-const machinesService = axios.create({
-  baseURL: `https://api.machines.dev/v1/apps/${FLY_APP_NAME}`,
-  headers: { 'Authorization': `Bearer ${FLY_API_TOKEN}` }
-})
-
 
 /*
   Our `runnerBaseUrl` will be different depending on if we're running locally or on Fly.io
@@ -64,13 +52,6 @@ async function runnerClient(endpoint:string, customConfig:RequestInit) {
       }
     })
 }
-
-const runnerService = axios.create({ 
-  baseURL: runnerBaseUrl,
-  headers: {
-    'Content-Type': 'application/json'
-  }
- })
 
 /*
   Our `flame` function is a wrapper around the original function that we want to run on another machine.
@@ -145,7 +126,7 @@ async function spawnAnotherMachine(guest:FlameGuest) {
     })
   })
   const machine = await response.json();
-  
+
   // Set a timeout so our new machine doesn't run forever
   await fetch(`https://api.machines.dev/v1/apps/${FLY_APP_NAME}/machines/${machine.id}/wait?timeout=60&state=started`, {
     method: 'GET',

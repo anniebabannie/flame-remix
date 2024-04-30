@@ -40,11 +40,13 @@ export default function Index() {
         <input type="number" name="secondNum" placeholder="Another number..."/>
         <input type="submit" value="Add numbers" disabled={navigation.state === "submitting"}/>
       </Form>
-      <p className="text-5xl">The sum is:  
+      <p className="text-5xl">The sum is: &nbps;
         {navigation.state === "submitting" && 
           <span className="text-gray-400"> calculating...</span>
         }
-        {actionData && actionData.sum}
+        {actionData && 
+        <span className="font-black">{actionData.sum}</span>
+        }
       </p>
     </div>
   );
