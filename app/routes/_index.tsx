@@ -1,5 +1,5 @@
 import type { MetaFunction } from "@remix-run/node";
-import { Form, useActionData } from "@remix-run/react";
+import { Form, useActionData, useNavigation } from "@remix-run/react";
 import { ActionFunctionArgs, json } from "react-router";
 import runMath from "../runMath.server.js";
 
@@ -18,12 +18,10 @@ export async function action({ request }: ActionFunctionArgs) {
   if (!a || !b) return json({ error: "Please provide two numbers" }, { status: 400 });
   let sum:number = 0;
   try {
-    console.log('running math')
+    console.log('running our math function...')
     sum = await runMath(a, b);
-    console.log('results of math: INDEX')
-    console.log(sum)
   } catch (error) {
-    console.log('there was a math error')
+    console.log('there was an error running math')
     console.log(error)
     return json({ error: error }, { status: 500 });
   }
@@ -33,17 +31,21 @@ export async function action({ request }: ActionFunctionArgs) {
 
 export default function Index() {
   const actionData = useActionData<typeof action>();
+  const navigation = useNavigation();
   return (
-    <div style={{ fontFamily: "system-ui, sans-serif", lineHeight: "1.8" }}>
-      <h1>Welcome to Remix</h1>
-      {actionData &&
-        <p>The sum is: {actionData.sum}</p>
-      }
-      <Form action="/?index" method="post">
-        <input type="number" name="firstNum"/>
-        <input type="number" name="secondNum"/>
-        <input type="submit" value="Run Math" />
+    <div className="flex flex-col items-center justify-center h-screen gap-24">
+      <h1>FLAME on Remix</h1>
+      <Form action="/?index" method="post" className="flex gap-8">
+        <input type="number" name="firstNum" placeholder="Number..."/>
+        <input type="number" name="secondNum" placeholder="Another number..."/>
+        <input type="submit" value="Add numbers" disabled={navigation.state === "submitting"}/>
       </Form>
+      <p className="text-5xl">The sum is:  
+        {navigation.state === "submitting" && 
+          <span className="text-gray-400"> calculating...</span>
+        }
+        {actionData && actionData.sum}
+      </p>
     </div>
   );
 }
